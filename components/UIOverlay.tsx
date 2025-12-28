@@ -7,9 +7,10 @@ interface UIOverlayProps {
   levelName: string;
   isComplete: boolean;
   onNext: () => void;
+  onReset: () => void;
 }
 
-const UIOverlay: React.FC<UIOverlayProps> = ({ narrative, instruction, levelName, isComplete, onNext }) => {
+const UIOverlay: React.FC<UIOverlayProps> = ({ narrative, instruction, levelName, isComplete, onNext, onReset }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isComplete && (e.key === 'Enter' || e.code === 'Enter')) {
@@ -20,26 +21,45 @@ const UIOverlay: React.FC<UIOverlayProps> = ({ narrative, instruction, levelName
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isComplete, onNext]);
 
+  const getLevelNum = () => {
+    if (levelName.includes("Peeling")) return "01";
+    if (levelName.includes("Ladder")) return "02";
+    if (levelName.includes("Displaced")) return "03";
+    if (levelName.includes("Symphony")) return "04";
+    if (levelName.includes("Complete")) return "05";
+    return "??";
+  };
+
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between p-12">
       {/* Header */}
       <div className="flex justify-between items-start w-full">
         <div className="border-l-2 border-white pl-4">
           <h1 className="text-xl font-extralight tracking-[0.4em] text-white uppercase">{levelName}</h1>
-          <p className="mt-1 text-[8px] text-white/30 tracking-[0.2em] uppercase font-bold">Memory Sequence // 0{levelName.includes('Shadow') ? '1' : levelName.includes('Ladder') ? '2' : '3'}</p>
+          <p className="mt-1 text-[8px] text-white/30 tracking-[0.2em] uppercase font-bold">Memory Sequence // {getLevelNum()}</p>
         </div>
 
-        <div className="text-right">
-          <div className="text-[9px] text-white/40 uppercase mb-2 font-bold tracking-[0.2em]">Sync Active</div>
-          <div className="flex gap-1 justify-end">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className={`h-0.5 w-3 ${i < 4 ? 'bg-white/60' : 'bg-white/10'}`} />
-            ))}
+        <div className="flex flex-col items-end gap-2">
+          <div className="text-right">
+            <div className="text-[9px] text-white/40 uppercase mb-2 font-bold tracking-[0.2em] animate-pulse">Sync Active</div>
+            <div className="flex gap-1 justify-end">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className={`h-0.5 w-3 ${i <= parseInt(getLevelNum()) ? 'bg-white/60' : 'bg-white/10'}`} />
+              ))}
+            </div>
           </div>
+          
+          {/* Reset Button - Minimalist */}
+          <button 
+            onClick={onReset}
+            className="pointer-events-auto text-[7px] text-white/10 hover:text-white/40 uppercase tracking-[0.3em] transition-colors duration-500 mt-4 border border-white/5 px-2 py-1"
+          >
+            Reset Memory
+          </button>
         </div>
       </div>
 
-      {/* Floating Instruction - More compact and higher up */}
+      {/* Floating Instruction */}
       <div className="absolute top-24 left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 flex justify-center">
         <div className="bg-white/[0.01] backdrop-blur-md px-8 py-4 rounded-sm border border-white/5 shadow-xl text-center">
           {instruction.split('\n').map((line, i) => (
@@ -50,7 +70,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({ narrative, instruction, levelName
         </div>
       </div>
 
-      {/* Center Narrative - Smaller and lower to avoid middle area */}
+      {/* Center Narrative */}
       <div className="flex flex-col items-center justify-end mb-24">
         {narrative && (
           <div className="px-12 py-4 max-w-2xl text-center">
@@ -64,7 +84,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({ narrative, instruction, levelName
       {/* Footer */}
       <div className="flex justify-between items-end opacity-10 pt-4">
         <div className="text-[8px] tracking-[0.8em] uppercase font-light">Folding Shadows</div>
-        <div className="text-right text-[8px] tracking-[0.8em] uppercase font-light">Into Daylight</div>
+        <div className="text-right text-[8px] tracking-[0.8em] uppercase font-light">Progress Auto-Saved</div>
       </div>
 
       {/* Completion Screen */}
@@ -80,7 +100,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({ narrative, instruction, levelName
             >
               <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
               <span className="relative z-10 tracking-[0.6em] uppercase text-[10px] font-light">
-                继续前行 (ENTER)
+                {getLevelNum() === "05" ? "再次轮回 (RESTART)" : "继续前行 (ENTER)"}
               </span>
             </button>
           </div>

@@ -47,5 +47,35 @@ export const INITIAL_LEVELS: GameLevel[] = [
       { id: 'source-far', x: 150, y: 450, width: 40, height: 250, type: 'shadow-source' },
       { id: 'portal', x: 1100, y: 600, width: 50, height: 100, type: 'portal' }
     ]
+  },
+  {
+    id: 4,
+    name: "影之交响 (Shadow Symphony)",
+    instruction: "在错落的孤岛间，影子是唯一的路标。 \n你需要将影子从一个台阶搬运到下一个。 \n节奏是关键，不要在虚无中迷失。",
+    playerStart: { x: 100, y: 600 },
+    target: { x: 1000, y: 150 },
+    objects: [
+      { id: 'ground', x: 0, y: 700, width: 250, height: 100, type: 'platform' },
+      { id: 'island-1', x: 450, y: 550, width: 100, height: 20, type: 'platform' },
+      { id: 'island-2', x: 750, y: 400, width: 100, height: 20, type: 'platform' },
+      { id: 'source-1', x: 120, y: 400, width: 30, height: 300, type: 'shadow-source' },
+      { id: 'source-2', x: 480, y: 300, width: 20, height: 250, type: 'shadow-source' },
+      { id: 'portal', x: 1000, y: 150, width: 50, height: 100, type: 'portal' }
+    ]
+  },
+  {
+    id: 5,
+    name: "完整之影 (The Complete Shadow)",
+    instruction: "阿飞，影子会减缓你的坠落。 \n手持影子时，你会像羽毛一样轻盈地降落。 \n在空中按 [ E ]，将影子铺在脚下。",
+    playerStart: { x: 50, y: 200 },
+    target: { x: 1050, y: 600 },
+    objects: [
+      { id: 'start-pad', x: 0, y: 300, width: 200, height: 20, type: 'platform' },
+      { id: 'island-mid', x: 400, y: 450, width: 60, height: 10, type: 'platform' },
+      { id: 'source-top', x: 80, y: 50, width: 20, height: 250, type: 'shadow-source' },
+      { id: 'source-mid', x: 420, y: 350, width: 20, height: 100, type: 'shadow-source' },
+      { id: 'source-low', x: 800, y: 500, width: 20, height: 300, type: 'shadow-source' },
+      { id: 'portal', x: 1050, y: 600, width: 60, height: 120, type: 'portal' }
+    ]
   }
 ];

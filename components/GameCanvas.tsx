@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, GRAVITY, JUMP_FORCE, MOVE_SPEED } from '../constants';
 import { GameLevel, GameObject, Vector2D } from '../types';
+import { audioService } from '../services/audioService';
 
 interface GameCanvasProps {
   level: GameLevel;
@@ -32,6 +33,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ level, onLevelComplete, onNarra
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       setKeys(prev => ({ ...prev, [e.code]: true }));
+      audioService.init();
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       setKeys(prev => ({ ...prev, [e.code]: false }));
@@ -48,21 +50,29 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ level, onLevelComplete, onNarra
 
   const handleInteraction = () => {
     if (heldObject) {
+      audioService.playPlace();
+      // 精确放置：影子顶端对齐阿飞脚底 (player.y + 40)
+      setDynamicObjects(prev => prev.map(obj => 
+        obj.id === heldObject.id ? { ...obj, x: player.x - 45, y: player.y + 40 } : obj
+      ));
       setHeldObject(null);
+      // 放置瞬间强制修正状态，防止掉落
+      setIsGrounded(true);
+      setVelocity(prev => ({ ...prev, y: 0 }));
       return;
     }
-    // 增大了垂直交互范围 (120 -> 220) 确保高处影子可剥离
     const source = dynamicObjects.find(obj => 
       obj.type === 'shadow-source' && 
       Math.abs(obj.x + obj.width / 2 - (player.x + 15)) < 150 &&
       Math.abs(obj.y + obj.height / 2 - (player.y + 20)) < 220
     );
     if (source) {
+      audioService.playPeel();
       const newFoldedShadow: GameObject = {
         id: `folded-${Date.now()}`,
         x: player.x,
         y: player.y - 40,
-        width: 100, // 增加影子宽度，提升关卡容错率
+        width: 120,
         height: 12,
         type: 'folded-shadow',
         isDetached: true
@@ -82,29 +92,48 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ level, onLevelComplete, onNarra
       if (keys['KeyA'] || keys['ArrowLeft']) nextVx = -MOVE_SPEED;
       if (keys['KeyD'] || keys['ArrowRight']) nextVx = MOVE_SPEED;
       
-      let nextVy = velocity.y + GRAVITY;
+      const effectiveGravity = heldObject ? GRAVITY * 0.35 : GRAVITY;
+      let nextVy = velocity.y + effectiveGravity;
+      
+      if (heldObject && nextVy > 2) nextVy = 2;
+
       if ((keys['Space'] || keys['ArrowUp']) && isGrounded) {
+        audioService.playJump();
         nextVy = JUMP_FORCE;
         setIsGrounded(false);
       }
+
       const nextPlayerPos = { x: player.x + nextVx, y: player.y + nextVy };
       let grounded = false;
 
+      // 碰撞检测逻辑优化
       dynamicObjects.forEach(obj => {
         if (obj.type === 'platform' || (obj.type === 'folded-shadow' && obj !== heldObject)) {
-          if (player.x + 30 > obj.x && player.x < obj.x + obj.width && player.y + 40 <= obj.y && nextPlayerPos.y + 40 >= obj.y) {
-            nextPlayerPos.y = obj.y - 40;
-            nextVy = 0;
-            grounded = true;
+          const playerBottom = player.y + 40;
+          const nextPlayerBottom = nextPlayerPos.y + 40;
+          const platformTop = obj.y;
+
+          // 允许 10 像素的“踏空吸附”范围，防止因帧率波导致的穿模
+          const withinXBounds = player.x + 30 > obj.x && player.x < obj.x + obj.width;
+          
+          if (withinXBounds) {
+            // 只要上一帧在平台上方，或者放置瞬间就在平台边缘
+            if (playerBottom <= platformTop + 10 && nextPlayerBottom >= platformTop) {
+              nextPlayerPos.y = platformTop - 40;
+              nextVy = 0;
+              grounded = true;
+            }
           }
-          if (nextPlayerPos.x + 30 > obj.x && nextPlayerPos.x < obj.x + obj.width && nextPlayerPos.y + 35 > obj.y && nextPlayerPos.y < obj.y + obj.height) {
+
+          // 侧边碰撞
+          if (nextPlayerPos.x + 30 > obj.x && nextPlayerPos.x < obj.x + obj.width && 
+              nextPlayerPos.y + 35 > obj.y && nextPlayerPos.y < obj.y + obj.height) {
             nextPlayerPos.x = player.x;
           }
         }
       });
 
-      // 掉落重置
-      if (nextPlayerPos.y > CANVAS_HEIGHT) {
+      if (nextPlayerPos.y > 1200) {
         resetLevel();
         return;
       }
@@ -112,16 +141,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ level, onLevelComplete, onNarra
       if (nextPlayerPos.x < 0) nextPlayerPos.x = 0;
       if (nextPlayerPos.x > CANVAS_WIDTH - 30) nextPlayerPos.x = CANVAS_WIDTH - 30;
       
-      if (Math.abs(nextPlayerPos.x - level.target.x) < 40 && Math.abs(nextPlayerPos.y - level.target.y) < 80) {
+      if (Math.abs(nextPlayerPos.x - level.target.x) < 50 && Math.abs(nextPlayerPos.y - level.target.y) < 120) {
+        audioService.playComplete();
         onLevelComplete();
       }
 
       setPlayer(nextPlayerPos);
       setVelocity({ x: nextVx, y: nextVy });
       setIsGrounded(grounded);
+
       if (heldObject) {
-        setDynamicObjects(prev => prev.map(obj => obj.id === heldObject.id ? { ...obj, x: player.x - 35, y: player.y - 30 } : obj));
+        setDynamicObjects(prev => prev.map(obj => obj.id === heldObject.id ? { ...obj, x: player.x - 45, y: player.y - 25 } : obj));
       }
+      
       draw(ctx);
       animationFrameId = requestAnimationFrame(update);
     };
@@ -134,7 +166,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ level, onLevelComplete, onNarra
       context.fillStyle = grad;
       context.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       
-      // Grid lines
       context.strokeStyle = 'rgba(255, 255, 255, 0.02)';
       context.lineWidth = 1;
       for(let i=0; i<CANVAS_WIDTH; i+=100) {
@@ -154,11 +185,27 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ level, onLevelComplete, onNarra
             context.fillText('PEEL [E]', obj.x + obj.width / 2, obj.y - 15);
           }
         } else if (obj.type === 'folded-shadow') {
-          context.fillStyle = obj === heldObject ? 'rgba(255,255,255,0.6)' : '#ffffff';
-          context.shadowBlur = 10; context.shadowColor = '#fff'; context.fillRect(obj.x, obj.y, obj.width, obj.height); context.shadowBlur = 0;
+          const isHeld = obj === heldObject;
+          context.fillStyle = isHeld ? 'rgba(255,255,255,0.7)' : '#ffffff';
+          context.shadowBlur = isHeld ? 25 : 10; 
+          context.shadowColor = '#fff'; 
+          context.fillRect(obj.x, obj.y, obj.width, obj.height); 
+          context.shadowBlur = 0;
+          
+          if (isHeld) {
+            context.strokeStyle = 'rgba(255,255,255,0.2)';
+            context.setLineDash([5, 5]);
+            context.beginPath();
+            context.moveTo(obj.x, obj.y + obj.height);
+            context.lineTo(player.x, player.y);
+            context.moveTo(obj.x + obj.width, obj.y + obj.height);
+            context.lineTo(player.x + 30, player.y);
+            context.stroke();
+            context.setLineDash([]);
+          }
         } else if (obj.type === 'portal') {
           const time = Date.now() * 0.003;
-          context.fillStyle = '#fff'; context.shadowBlur = 30 + Math.sin(time) * 15; context.shadowColor = '#fff'; context.fillRect(obj.x, obj.y, obj.width, obj.height); context.shadowBlur = 0;
+          context.fillStyle = '#fff'; context.shadowBlur = 40 + Math.sin(time) * 20; context.shadowColor = '#fff'; context.fillRect(obj.x, obj.y, obj.width, obj.height); context.shadowBlur = 0;
         }
       });
       context.fillStyle = '#ffffff'; context.fillRect(player.x, player.y, 30, 40);
