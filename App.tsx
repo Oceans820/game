@@ -34,7 +34,6 @@ const App: React.FC = () => {
       setCurrentLevelIndex(prev => prev + 1);
       setIsLevelComplete(false);
     } else {
-      // Reached the end
       setNarrative("于是，阿飞在白昼的尽头，看见了自己完整的影。");
       setCurrentLevelIndex(0);
       setIsLevelComplete(false);
@@ -50,16 +49,11 @@ const App: React.FC = () => {
       />
       <UIOverlay 
         narrative={narrative} 
+        instruction={currentLevel.instruction}
         levelName={currentLevel.name}
         isComplete={isLevelComplete}
         onNext={handleNextLevel}
       />
-      
-      {/* Decorative corners */}
-      <div className="absolute top-0 left-0 w-32 h-32 border-t border-l border-white/20 m-8 pointer-events-none" />
-      <div className="absolute top-0 right-0 w-32 h-32 border-t border-r border-white/20 m-8 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-32 h-32 border-b border-l border-white/20 m-8 pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-32 h-32 border-b border-r border-white/20 m-8 pointer-events-none" />
     </div>
   );
 };
